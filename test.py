@@ -1,12 +1,13 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import requests
 plt.style.use('fivethirtyeight')
 
 data = pd.read_csv('gemini_BTCUSD_2020_1min (1).csv')
 data = data.set_index(pd.DatetimeIndex(data['Date'].values))
 data = data.iloc[::-1]
-print(data)
+#print(data)
 
 #for i in range(0,len(data)):
 #    print(data['Date'][i])
