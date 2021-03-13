@@ -4,24 +4,13 @@ import json
 import time
 from IPython.core.display import clear_output
 import pandas as pd
+from tqdm import tqdm
 
 requests_cache.install_cache()
+tqdm.pandas()
 
 API_KEY = '2a92fc61b8cbf94eba59fd5c02fbe21a'
 USER_AGENT = 'Topher1217'
-
-headers = {
-    'user-agent': USER_AGENT
-}
-
-payload = {
-    'api_key':API_KEY,
-    'format':'json',
-    'method':'chart.gettopartists'
-}
-
-def jprint(obj):
-    print(json.dumps(obj, sort_keys=True, indent=4))
 
 def lastfm_get(payload):
     headers = {'user-agent': USER_AGENT}
@@ -29,10 +18,15 @@ def lastfm_get(payload):
     payload['api_key'] = API_KEY
     return requests.get('http://ws.audioscrobbler.com/2.0/', headers=headers, params=payload)
 
-response = lastfm_get({'method': 'chart.gettopartists'})
-text = json.dumps(response.json(), sort_keys=True, indent=4)
-print(response.status_code)
-jprint(response.json()['artists']['@attr'])
+def lookup_tags(artist):
+    response = lastfm_get({'method': 'artist.getTopTags', 'artist': artist})
+    if response.status_code != 200:
+        return None
+    tags = [t['name'] for t in response.json()['toptags']['tag'][:3]]
+    tags_str = ', '.join(tags)
+    if not getattr(response,'from_cache',False):
+        time.sleep(0.25)
+    return tags_str
 
 responses = []
 
@@ -62,6 +56,10 @@ frames = [pd.DataFrame(r.json()['artists']['artist']) for r in responses]
 artists = pd.concat(frames)
 artists = artists.drop('image',axis=1)
 artists = artists.drop_duplicates().reset_index(drop=True)
-artists.head()
-artists.info()
-artists.describe()
+
+artists['tags'] = artists['name'].progress_apply(lookup_tags)
+
+artists[['playcount', 'listeners']] = artists[['playcount', 'listeners']].astype(int)
+artists = artists.sort_values('listeners',ascending=False)
+
+artists.to_csv('artists.csv',index=False)
