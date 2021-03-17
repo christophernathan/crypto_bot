@@ -15,6 +15,8 @@ class CoinbaseAuth(AuthBase): # taken from Coinbase API docs to ensure protocol
 
     def __call__(self, request):
         timestamp = str(time.time())
+        if isinstance(request.body,bytes): # request body will be in json format, which is stored as a bytes object
+            request.body = request.body.decode('utf-8')
         message = timestamp + request.method + request.path_url + (request.body or '')
         hmac_key = base64.b64decode(self.secret_key)
         signature = hmac.new(hmac_key, codecs.encode(message,'utf-8'), hashlib.sha256)
@@ -34,4 +36,16 @@ r = requests.get(api_url + 'accounts', auth=auth)
 text = json.dumps(r.json(), sort_keys=True, indent=4)
 print (text)
 
+r = requests.get(api_url + 'payment-methods',auth=auth)
+text = json.dumps(r.json(), sort_keys=True, indent=4)
+print (text)
 
+body = {
+    'amount': 10,
+    'currency': 'USD',
+    'payment_method_id':'6a23926d-74b6-4373-8434-9d437c2bafb2'
+}
+
+r = requests.post(api_url + 'deposits/payment-method', json=body, auth=auth)
+text = json.dumps(r.json(), sort_keys=True, indent=4)
+print (text)
