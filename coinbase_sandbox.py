@@ -55,7 +55,7 @@ body = {
 #text = json.dumps(r.json(), sort_keys=True, indent=4)
 #print (text)
 
-r = requests.get(api_url + 'products', auth=auth)
+r = requests.get(api_url + 'products/BTC-USD/book', params={'level':2}, auth=auth)
 text = json.dumps(r.json(), sort_keys=True, indent=4)
 print (text)
 
@@ -66,6 +66,7 @@ order_details = {
     'funds': 10000
 }
 
-r = requests.post(api_url + 'orders', json=order_details, auth=auth)
-text = json.dumps(r.json(), sort_keys=True, indent=4)
-print (text)
+#r = requests.post(api_url + 'orders', json=order_details, auth=auth)
+#text = json.dumps(r.json(), sort_keys=True, indent=4)
+#print (text)
+
