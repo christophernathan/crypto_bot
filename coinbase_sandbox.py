@@ -1,5 +1,6 @@
 import requests, json, hmac, hashlib, time, base64, codecs
 from requests.auth import AuthBase
+import pandas as pd
 
 API_SECRET = 'vL83tlsKCU1a1+sV57t0PGO/Ow23WqU72airLjSTXv8uXJBcC9TtbJvtUX4D8qauwheW62BgXLtGYUW+QsoAKQ=='
 API_KEY = '4a60aec62e8a0120bee80c0549699f6e'
@@ -39,6 +40,8 @@ class CoinbaseAuth(AuthBase): # taken from Coinbase API docs to ensure protocol
 
 auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
+BTC_data = []
+
 r = requests.get(api_url + 'accounts', auth=auth)
 for account in r.json():
     if account['currency'] == 'USD':
@@ -53,11 +56,16 @@ print(CASH_BALANCE)
 print(BTC_ACCOUNT)
 print(BTC_BALANCE)
 
-r = requests.get(api_url + 'products/BTC-USD/book', auth=auth)
-text = json.dumps(r.json(), sort_keys=True, indent=4)
+curr_data = requests.get(api_url + 'products/BTC-USD/book', auth=auth).json()
+text = json.dumps(curr_data, sort_keys=True, indent=4)
 print(text)
 
-time.sleep(60)
+while(True):
+    BTC_data.append([time.time(),curr_data['asks'][0][0],curr_data['asks'][0][1],curr_data['bids'][0][0],curr_data['bids'][0][1]])
+    dataframe = pd.DataFrame(BTC_data)
+    time.sleep(1)
+    print(BTC_data)
+    curr_data = requests.get(api_url + 'products/BTC-USD/book', auth=auth).json()
 
 
 #text = json.dumps(r.json(), sort_keys=True, indent=4)
