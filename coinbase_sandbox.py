@@ -1,6 +1,7 @@
 import requests, json, hmac, hashlib, time, base64, codecs
 from requests.auth import AuthBase
 import pandas as pd
+from collections import deque
 
 API_SECRET = 'vL83tlsKCU1a1+sV57t0PGO/Ow23WqU72airLjSTXv8uXJBcC9TtbJvtUX4D8qauwheW62BgXLtGYUW+QsoAKQ=='
 API_KEY = '4a60aec62e8a0120bee80c0549699f6e'
@@ -40,7 +41,7 @@ class CoinbaseAuth(AuthBase): # taken from Coinbase API docs to ensure protocol
 
 auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
-BTC_data = []
+BTC_data = deque(maxlen=5)
 
 r = requests.get(api_url + 'accounts', auth=auth)
 for account in r.json():
