@@ -6,6 +6,11 @@ API_KEY = '4a60aec62e8a0120bee80c0549699f6e'
 API_PASS = 'kgs978a22jf'
 api_url = 'https://api-public.sandbox.pro.coinbase.com/'
 PAYMENT_METHOD_ID = ''
+CASH_ACCOUNT = ''
+BTC_ACCOUNT = ''
+CASH_BALANCE = 0
+BTC_BALANCE = 0
+long_flag = False
 
 
 class CoinbaseAuth(AuthBase): # taken from Coinbase API docs to ensure protocol
@@ -33,13 +38,34 @@ class CoinbaseAuth(AuthBase): # taken from Coinbase API docs to ensure protocol
         return request
 
 auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
+
 r = requests.get(api_url + 'accounts', auth=auth)
+for account in r.json():
+    if account['currency'] == 'USD':
+        CASH_ACCOUNT = account['id']
+        CASH_BALANCE = account['available']
+    elif account['currency'] == 'BTC':
+        BTC_ACCOUNT = account['id']
+        BTC_BALANCE = account['available']
+
+print(CASH_ACCOUNT)
+print(CASH_BALANCE)
+print(BTC_ACCOUNT)
+print(BTC_BALANCE)
+
+r = requests.get(api_url + 'products/BTC-USD/book', auth=auth)
 text = json.dumps(r.json(), sort_keys=True, indent=4)
-print (text)
+print(text)
+
+time.sleep(60)
+
+
+#text = json.dumps(r.json(), sort_keys=True, indent=4)
+#print (text)
 
 r = requests.get(api_url + 'payment-methods',auth=auth)
 text = json.dumps(r.json(), sort_keys=True, indent=4)
-print (text)
+#print (text)
 
 for method in r.json():
     if method['type'] == 'ach_bank_account':
@@ -54,10 +80,6 @@ body = {
 #r = requests.post(api_url + 'deposits/payment-method', json=body, auth=auth)
 #text = json.dumps(r.json(), sort_keys=True, indent=4)
 #print (text)
-
-r = requests.get(api_url + 'products/BTC-USD/book', params={'level':2}, auth=auth)
-text = json.dumps(r.json(), sort_keys=True, indent=4)
-print (text)
 
 order_details = {
     'type': 'market',
