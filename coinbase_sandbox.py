@@ -41,7 +41,7 @@ class CoinbaseAuth(AuthBase): # taken from Coinbase API docs to ensure protocol
 
 auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
-BTC_data = deque(maxlen=5)
+BTC_data = deque(maxlen=200)
 
 r = requests.get(api_url + 'accounts', auth=auth)
 for account in r.json():
@@ -64,8 +64,23 @@ print(text)
 while(True):
     BTC_data.append([time.time(),curr_data['asks'][0][0],curr_data['asks'][0][1],curr_data['bids'][0][0],curr_data['bids'][0][1]])
     dataframe = pd.DataFrame(BTC_data)
+    dataframe.columns = ['Unix Timestamp', 'Ask Price', 'Ask Size', 'Bid Price', 'Bid Size']
+
+    dataframe['Average Price'] = dataframe.apply(lambda row: (float(row['Ask Price'])+float(row['Bid Price']))/2, axis=1)
+
+    ShortEMA = dataframe['Average Price'].ewm(span=12,adjust=False).mean()
+    LongEMA = dataframe['Average Price'].ewm(span=26,adjust=False).mean()
+    MACD = ShortEMA - LongEMA
+    signal = MACD.ewm(span=9,adjust=False).mean()
+
+    dataframe['ShortEMA'] = ShortEMA
+    dataframe['LongEMA'] = LongEMA
+    dataframe['MACD'] = MACD
+    dataframe['Signal'] = signal
+
     time.sleep(1)
     print(BTC_data)
+    print(dataframe)
     curr_data = requests.get(api_url + 'products/BTC-USD/book', auth=auth).json()
 
 
