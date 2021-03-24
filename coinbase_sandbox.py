@@ -41,6 +41,23 @@ class CoinbaseAuth(AuthBase): # taken from Coinbase API docs to ensure protocol
 
 auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
+order_details = {
+    'type': 'market',
+    'side': 'buy',
+    'product_id': 'BTC-USD',
+    'funds': 1000
+}
+
+r = requests.post(api_url + 'orders', json=order_details, auth=auth)
+text = json.dumps(r.json(), sort_keys=True, indent=4)
+print (text)
+
+r = requests.get(api_url + 'orders', json=order_details, auth=auth)
+text = json.dumps(r.json(), sort_keys=True, indent=4)
+print (text)
+
+
+
 BTC_data = deque(maxlen=200)
 
 r = requests.get(api_url + 'accounts', auth=auth)
@@ -105,14 +122,4 @@ body = {
 #text = json.dumps(r.json(), sort_keys=True, indent=4)
 #print (text)
 
-order_details = {
-    'type': 'market',
-    'side': 'buy',
-    'product_id': 'BTC-USD',
-    'funds': 10000
-}
-
-#r = requests.post(api_url + 'orders', json=order_details, auth=auth)
-#text = json.dumps(r.json(), sort_keys=True, indent=4)
-#print (text)
 
