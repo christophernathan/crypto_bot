@@ -2,6 +2,11 @@ import requests, json, hmac, hashlib, time, base64, codecs
 from requests.auth import AuthBase
 import pandas as pd
 from collections import deque
+import math
+
+def truncate(number, digits) -> float:
+    stepper = 10.0 ** digits
+    return math.trunc(stepper * number) / stepper
 
 API_SECRET = 'vL83tlsKCU1a1+sV57t0PGO/Ow23WqU72airLjSTXv8uXJBcC9TtbJvtUX4D8qauwheW62BgXLtGYUW+QsoAKQ=='
 API_KEY = '4a60aec62e8a0120bee80c0549699f6e'
@@ -41,6 +46,27 @@ class CoinbaseAuth(AuthBase): # taken from Coinbase API docs to ensure protocol
 
 auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
+def buy(dataframe):
+    order_details = {
+        'type': 'limit',
+        'side': 'buy',
+        'product_id': 'BTC-USD',
+        'price': dataframe['Bid Price'].iloc[-1],
+        'size': truncate(min(float(CASH_BALANCE),10000)/float(dataframe['Bid Price'].iloc[-1]),8) # max trade size
+    }
+    order = requests.post(api_url + 'orders', json=order_details, auth=auth)
+    if order.status_code != 200:
+        print("NOPE")
+        text = json.dumps(order.json(), sort_keys=True, indent=4)
+        print (text)
+        #TODO: log error
+    else:
+        print("YEET")
+    orders = requests.get(api_url + 'orders', auth=auth)
+    if orders.json != []:
+        delete = requests.delete(api_url + 'orders', auth=auth)
+
+
 order_details = {
     'type': 'market',
     'side': 'buy',
@@ -48,13 +74,13 @@ order_details = {
     'funds': 1000
 }
 
-r = requests.post(api_url + 'orders', json=order_details, auth=auth)
-text = json.dumps(r.json(), sort_keys=True, indent=4)
-print (text)
-
-r = requests.get(api_url + 'orders', json=order_details, auth=auth)
-text = json.dumps(r.json(), sort_keys=True, indent=4)
-print (text)
+#r = requests.post(api_url + 'orders', json=order_details, auth=auth)
+#text = json.dumps(r.json(), sort_keys=True, indent=4)
+#print (text)
+#
+#r = requests.get(api_url + 'orders', json=order_details, auth=auth)
+#text = json.dumps(r.json(), sort_keys=True, indent=4)
+#print (text)
 
 
 
@@ -95,10 +121,14 @@ while(True):
     dataframe['MACD'] = MACD
     dataframe['Signal'] = signal
 
+    if long_flag == False and dataframe['MACD'].iloc[-1] > dataframe['Signal'].iloc[-1]:
+        buy(dataframe)
+
     time.sleep(1)
     print(BTC_data)
     print(dataframe)
     curr_data = requests.get(api_url + 'products/BTC-USD/book', auth=auth).json()
+    print(dataframe['MACD'].iloc[-1])
 
 
 #text = json.dumps(r.json(), sort_keys=True, indent=4)
