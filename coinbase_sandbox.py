@@ -61,7 +61,7 @@ def buy(dataframe):
         'side': 'buy',
         'product_id': 'BTC-USD',
         'price': dataframe['Ask Price'].iloc[-1],
-        'size': truncate(min(float(CASH_BALANCE)*(1+FEE_PERCENT),10000*curr_ask)/curr_ask,8) # max trade size
+        'size': truncate(min(float(CASH_BALANCE)/(1+FEE_PERCENT),10000*curr_ask)/curr_ask,8) # max trade size
     }
     order = requests.post(api_url + 'orders', json=order_details, auth=auth)
     if order.status_code != 200:
