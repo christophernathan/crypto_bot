@@ -17,6 +17,7 @@ CASH_ACCOUNT = ''
 BTC_ACCOUNT = ''
 CASH_BALANCE = 0
 BTC_BALANCE = 0
+FEE_PERCENT = .0035 # .35% fee per transaction
 long_flag = False
 
 
@@ -47,12 +48,20 @@ class CoinbaseAuth(AuthBase): # taken from Coinbase API docs to ensure protocol
 auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
 def buy(dataframe):
+    print(dataframe)
+    curr_ask = float(dataframe['Ask Price'].iloc[-1])
+    print(CASH_BALANCE)
+    print(min(float(CASH_BALANCE),10000))
+    print(curr_ask)
+    print(float(dataframe['Ask Price'].iloc[-1]))
+    print(min(float(CASH_BALANCE),10000*curr_ask)/curr_ask)
+    print(truncate(min(float(CASH_BALANCE),10000*curr_ask)/curr_ask,8))
     order_details = {
         'type': 'limit',
         'side': 'buy',
         'product_id': 'BTC-USD',
-        'price': dataframe['Bid Price'].iloc[-1],
-        'size': truncate(min(float(CASH_BALANCE),10000)/float(dataframe['Bid Price'].iloc[-1]),8) # max trade size
+        'price': dataframe['Ask Price'].iloc[-1],
+        'size': truncate(min(float(CASH_BALANCE)*(1+FEE_PERCENT),10000*curr_ask)/curr_ask,8) # max trade size
     }
     order = requests.post(api_url + 'orders', json=order_details, auth=auth)
     if order.status_code != 200:
@@ -62,17 +71,28 @@ def buy(dataframe):
         #TODO: log error
     else:
         print("YEET")
+        text = json.dumps(order.json(), sort_keys=True, indent=4)
+        print (text)
+    time.sleep(1) # allow time for order to fill
     orders = requests.get(api_url + 'orders', auth=auth)
-    if orders.json != []:
+    print(orders.json())
+    if len(orders.json()) != 0:
+        print('CANCELLING')
         delete = requests.delete(api_url + 'orders', auth=auth)
 
 
 order_details = {
-    'type': 'market',
+    'type': 'limit',
     'side': 'buy',
     'product_id': 'BTC-USD',
-    'funds': 1000
+    'price': 55000,
+    'size': .00100001
 }
+
+order = requests.post(api_url + 'orders', json=order_details, auth=auth)
+#order = requests.get(api_url + 'products', json=order_details, auth=auth)
+text = json.dumps(order.json(), sort_keys=True, indent=4)
+print(text)
 
 #r = requests.post(api_url + 'orders', json=order_details, auth=auth)
 #text = json.dumps(r.json(), sort_keys=True, indent=4)
@@ -83,11 +103,10 @@ order_details = {
 #print (text)
 
 
-
 BTC_data = deque(maxlen=200)
 
-r = requests.get(api_url + 'accounts', auth=auth)
-for account in r.json():
+accounts = requests.get(api_url + 'accounts', auth=auth)
+for account in accounts.json():
     if account['currency'] == 'USD':
         CASH_ACCOUNT = account['id']
         CASH_BALANCE = account['available']
