@@ -19,6 +19,7 @@ CASH_BALANCE = 0
 BTC_BALANCE = 0
 FEE_PERCENT = .005 # .5% fee per transaction
 long_flag = False
+cost_basis = 0
 
 
 class CoinbaseAuth(AuthBase): # taken from Coinbase API docs to ensure protocol
