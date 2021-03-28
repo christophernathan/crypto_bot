@@ -50,6 +50,7 @@ auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 def buy(dataframe):
     print(dataframe)
     curr_ask = float(dataframe['Ask Price'].iloc[-1])
+    max_order_size = min(float(CASH_BALANCE),10000*curr_ask)
     print(CASH_BALANCE)
     print(min(float(CASH_BALANCE),10000))
     print(curr_ask)
@@ -60,25 +61,56 @@ def buy(dataframe):
         'type': 'limit',
         'side': 'buy',
         'product_id': 'BTC-USD',
-        'price': dataframe['Ask Price'].iloc[-1],
-        'size': truncate(min(float(CASH_BALANCE)/(1+FEE_PERCENT),10000*curr_ask)/curr_ask,8) # max trade size
+        'price': curr_ask, # order limit is current ask price for fast fill 
+        'size': truncate(max_order_size/(curr_ask*(1+FEE_PERCENT)),8) # max trade size accounting for fee % and maximum size precision
     }
     order = requests.post(api_url + 'orders', json=order_details, auth=auth)
     if order.status_code != 200:
-        print("NOPE")
+        print("BUY FAILED")
         text = json.dumps(order.json(), sort_keys=True, indent=4)
         print (text)
         #TODO: log error
     else:
-        print("YEET")
+        print("BUY SUCCEEDED")
         text = json.dumps(order.json(), sort_keys=True, indent=4)
         print (text)
+        long_flag = True
     time.sleep(1) # allow time for order to fill
     orders = requests.get(api_url + 'orders', auth=auth)
     print(orders.json())
     if len(orders.json()) != 0:
-        print('CANCELLING')
+        print('CANCELLING BUY')
         delete = requests.delete(api_url + 'orders', auth=auth)
+
+def sell(dataframe):
+    curr_bid = float(dataframe['Bid Price'].iloc[-1])
+    max_order_size = min(float(BTC_BALANCE),10000)
+    order_details = {
+        'type': 'limit',
+        'side': 'sell',
+        'product_id': 'BTC-USD',
+        'price': curr_bid, # order limit is current ask price for fast fill 
+        'size': truncate(max_order_size/(1+FEE_PERCENT),8) # max trade size accounting for fee % and maximum size precision
+    }
+    order = requests.post(api_url + 'orders', json=order_details, auth=auth)
+    if order.status_code != 200:
+        print("SELL FAILED")
+        text = json.dumps(order.json(), sort_keys=True, indent=4)
+        print (text)
+        #TODO: log error
+    else:
+        print("SELL SUCCEEDED")
+        text = json.dumps(order.json(), sort_keys=True, indent=4)
+        print (text)
+        long_flag = False
+    time.sleep(1) # allow time for order to fill
+    orders = requests.get(api_url + 'orders', auth=auth)
+    print(orders.json())
+    if len(orders.json()) != 0:
+        print('CANCELLING SELL')
+        delete = requests.delete(api_url + 'orders', auth=auth)
+
+
 
 
 order_details = {
@@ -142,6 +174,8 @@ while(True):
 
     if long_flag == False and dataframe['MACD'].iloc[-1] > dataframe['Signal'].iloc[-1]:
         buy(dataframe)
+    elif long_flag == True and dataframe['MACD'].iloc[-1] < dataframe['Signal'].iloc[-1]:
+        sell(dataframe)
 
     time.sleep(1)
     print(BTC_data)
