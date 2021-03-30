@@ -17,7 +17,7 @@ CASH_ACCOUNT = ''
 BTC_ACCOUNT = ''
 CASH_BALANCE = 0
 BTC_BALANCE = 0
-FEE_PERCENT = .005 # .5% fee per transaction
+FEE_PERCENT = .005 # .5% fee per transaction TODO: dynamic fee calculation
 long_flag = False
 cost_basis = 0
 
@@ -49,6 +49,8 @@ class CoinbaseAuth(AuthBase): # taken from Coinbase API docs to ensure protocol
 auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
 def buy(dataframe):
+    global long_flag
+    global cost_basis
     print(dataframe)
     curr_ask = float(dataframe['Ask Price'].iloc[-1])
     max_order_size = min(float(CASH_BALANCE),10000*curr_ask)
@@ -78,6 +80,7 @@ def buy(dataframe):
         print (text)
         long_flag = True
         cost_basis = max_order_size/effective_order_size
+        print('COST BASIS AFTER BUY: ', cost_basis)
     time.sleep(1) # allow time for order to fill
     orders = requests.get(api_url + 'orders', auth=auth)
     print(orders.json())
@@ -86,6 +89,7 @@ def buy(dataframe):
         delete = requests.delete(api_url + 'orders', auth=auth)
 
 def sell(dataframe):
+    global long_flag
     curr_bid = float(dataframe['Bid Price'].iloc[-1])
     max_order_size = min(float(BTC_BALANCE),10000)
     order_details = {
@@ -116,18 +120,18 @@ def sell(dataframe):
 
 
 
-order_details = {
-    'type': 'limit',
-    'side': 'buy',
-    'product_id': 'BTC-USD',
-    'price': 55000,
-    'size': .00100001
-}
-
-order = requests.post(api_url + 'orders', json=order_details, auth=auth)
-#order = requests.get(api_url + 'products', json=order_details, auth=auth)
-text = json.dumps(order.json(), sort_keys=True, indent=4)
-print(text)
+#order_details = {
+#    'type': 'limit',
+#    'side': 'buy',
+#    'product_id': 'BTC-USD',
+#    'price': 55000,
+#    'size': .00100001
+#}
+#
+#order = requests.post(api_url + 'orders', json=order_details, auth=auth)
+##order = requests.get(api_url + 'products', json=order_details, auth=auth)
+#text = json.dumps(order.json(), sort_keys=True, indent=4)
+#print(text)
 
 #r = requests.post(api_url + 'orders', json=order_details, auth=auth)
 #text = json.dumps(r.json(), sort_keys=True, indent=4)
@@ -144,21 +148,24 @@ accounts = requests.get(api_url + 'accounts', auth=auth)
 for account in accounts.json():
     if account['currency'] == 'USD':
         CASH_ACCOUNT = account['id']
-        CASH_BALANCE = account['available']
+        CASH_BALANCE = float(account['available'])
     elif account['currency'] == 'BTC':
         BTC_ACCOUNT = account['id']
-        BTC_BALANCE = account['available']
+        BTC_BALANCE = float(account['available'])
 
 print(CASH_ACCOUNT)
 print(CASH_BALANCE)
 print(BTC_ACCOUNT)
-print(BTC_BALANCE)
+print(BTC_BALANCE)    
+
+long_flag = True if BTC_BALANCE>CASH_BALANCE else False
 
 curr_data = requests.get(api_url + 'products/BTC-USD/book', auth=auth).json()
 text = json.dumps(curr_data, sort_keys=True, indent=4)
 print(text)
 
 while(True):
+    print(long_flag)
     BTC_data.append([time.time(),curr_data['asks'][0][0],curr_data['asks'][0][1],curr_data['bids'][0][0],curr_data['bids'][0][1]])
     dataframe = pd.DataFrame(BTC_data)
     dataframe.columns = ['Unix Timestamp', 'Ask Price', 'Ask Size', 'Bid Price', 'Bid Size']
@@ -175,10 +182,22 @@ while(True):
     dataframe['MACD'] = MACD
     dataframe['Signal'] = signal
 
+    curr_bid = float(dataframe['Bid Price'].iloc[-1])
+    print('CURRENT BID: ', curr_bid)
+    print('SELL FEE: ', curr_bid*BTC_BALANCE*FEE_PERCENT)
+    print('NEW COST BASIS: ', ((cost_basis*BTC_BALANCE)+(curr_bid*BTC_BALANCE*FEE_PERCENT))/BTC_BALANCE)
+
     if long_flag == False and dataframe['MACD'].iloc[-1] > dataframe['Signal'].iloc[-1]:
         buy(dataframe)
-    elif long_flag == True and dataframe['MACD'].iloc[-1] < dataframe['Signal'].iloc[-1] and dataframe['Bid Price'].iloc[-1] > ((cost_basis*BTC_BALANCE)+(dataframe['Bid Price'].iloc[-1]*BTC_BALANCE*FEE_PERCENT))/BTC_BALANCE:
+    elif long_flag == True and dataframe['MACD'].iloc[-1] < dataframe['Signal'].iloc[-1] and curr_bid > ((cost_basis*BTC_BALANCE)+(curr_bid*BTC_BALANCE*FEE_PERCENT))/BTC_BALANCE:
         sell(dataframe)
+
+    accounts = requests.get(api_url + 'accounts', auth=auth)
+    for account in accounts.json():
+        if account['currency'] == 'USD':
+            CASH_BALANCE = float(account['available'])
+        elif account['currency'] == 'BTC':
+            BTC_BALANCE = float(account['available'])
 
     time.sleep(1)
     print(BTC_data)
