@@ -177,7 +177,7 @@ while(True):
 
     if long_flag == False and dataframe['MACD'].iloc[-1] > dataframe['Signal'].iloc[-1]:
         buy(dataframe)
-    elif long_flag == True and dataframe['MACD'].iloc[-1] < dataframe['Signal'].iloc[-1]:
+    elif long_flag == True and dataframe['MACD'].iloc[-1] < dataframe['Signal'].iloc[-1] and dataframe['Bid Price'].iloc[-1] > cost_basis: # TODO: add sell fee
         sell(dataframe)
 
     time.sleep(1)
