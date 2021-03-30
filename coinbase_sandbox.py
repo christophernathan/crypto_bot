@@ -52,6 +52,7 @@ def buy(dataframe):
     print(dataframe)
     curr_ask = float(dataframe['Ask Price'].iloc[-1])
     max_order_size = min(float(CASH_BALANCE),10000*curr_ask)
+    effective_order_size = truncate(max_order_size/(curr_ask*(1+FEE_PERCENT)),8)
     print(CASH_BALANCE)
     print(min(float(CASH_BALANCE),10000))
     print(curr_ask)
@@ -63,7 +64,7 @@ def buy(dataframe):
         'side': 'buy',
         'product_id': 'BTC-USD',
         'price': curr_ask, # order limit is current ask price for fast fill 
-        'size': truncate(max_order_size/(curr_ask*(1+FEE_PERCENT)),8) # max trade size accounting for fee % and maximum size precision
+        'size': effective_order_size # max trade size accounting for fee % and maximum size precision
     }
     order = requests.post(api_url + 'orders', json=order_details, auth=auth)
     if order.status_code != 200:
@@ -76,6 +77,7 @@ def buy(dataframe):
         text = json.dumps(order.json(), sort_keys=True, indent=4)
         print (text)
         long_flag = True
+        cost_basis = max_order_size/effective_order_size
     time.sleep(1) # allow time for order to fill
     orders = requests.get(api_url + 'orders', auth=auth)
     print(orders.json())
