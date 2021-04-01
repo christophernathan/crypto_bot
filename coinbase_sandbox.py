@@ -46,8 +46,6 @@ class CoinbaseAuth(AuthBase): # taken from Coinbase API docs to ensure protocol
         })
         return request
 
-auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
-
 def buy(dataframe):
     global long_flag
     global cost_basis
@@ -118,8 +116,6 @@ def sell(dataframe):
         delete = requests.delete(api_url + 'orders', auth=auth)
 
 
-
-
 #order_details = {
 #    'type': 'limit',
 #    'side': 'buy',
@@ -141,71 +137,76 @@ def sell(dataframe):
 #text = json.dumps(r.json(), sort_keys=True, indent=4)
 #print (text)
 
+auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
-BTC_data = deque(maxlen=200)
-
-accounts = requests.get(api_url + 'accounts', auth=auth)
-for account in accounts.json():
-    if account['currency'] == 'USD':
-        CASH_ACCOUNT = account['id']
-        CASH_BALANCE = float(account['available'])
-    elif account['currency'] == 'BTC':
-        BTC_ACCOUNT = account['id']
-        BTC_BALANCE = float(account['available'])
-
-print(CASH_ACCOUNT)
-print(CASH_BALANCE)
-print(BTC_ACCOUNT)
-print(BTC_BALANCE)    
-
-long_flag = True if BTC_BALANCE>CASH_BALANCE else False
-
-curr_data = requests.get(api_url + 'products/BTC-USD/book', auth=auth).json()
-text = json.dumps(curr_data, sort_keys=True, indent=4)
-print(text)
-
-while(True):
-    print(long_flag)
-    BTC_data.append([time.time(),curr_data['asks'][0][0],curr_data['asks'][0][1],curr_data['bids'][0][0],curr_data['bids'][0][1]])
-    dataframe = pd.DataFrame(BTC_data)
-    dataframe.columns = ['Unix Timestamp', 'Ask Price', 'Ask Size', 'Bid Price', 'Bid Size']
-
-    dataframe['Average Price'] = dataframe.apply(lambda row: (float(row['Ask Price'])+float(row['Bid Price']))/2, axis=1)
-
-    ShortEMA = dataframe['Average Price'].ewm(span=12,adjust=False).mean()
-    LongEMA = dataframe['Average Price'].ewm(span=26,adjust=False).mean()
-    MACD = ShortEMA - LongEMA
-    signal = MACD.ewm(span=9,adjust=False).mean()
-
-    dataframe['ShortEMA'] = ShortEMA
-    dataframe['LongEMA'] = LongEMA
-    dataframe['MACD'] = MACD
-    dataframe['Signal'] = signal
-
-    curr_bid = float(dataframe['Bid Price'].iloc[-1])
-    print('CURRENT BID: ', curr_bid)
-    print('SELL FEE: ', curr_bid*BTC_BALANCE*FEE_PERCENT)
-    print('NEW COST BASIS: ', ((cost_basis*BTC_BALANCE)+(curr_bid*BTC_BALANCE*FEE_PERCENT))/BTC_BALANCE)
-
-    if long_flag == False and dataframe['MACD'].iloc[-1] > dataframe['Signal'].iloc[-1]:
-        buy(dataframe)
-    elif long_flag == True and dataframe['MACD'].iloc[-1] < dataframe['Signal'].iloc[-1] and curr_bid > ((cost_basis*BTC_BALANCE)+(curr_bid*BTC_BALANCE*FEE_PERCENT))/BTC_BALANCE:
-        sell(dataframe)
+def bot():
+    global CASH_ACCOUNT, BTC_ACCOUNT, CASH_BALANCE, BTC_BALANCE, long_flag, cost_basis
+    
+    BTC_data = deque(maxlen=200)
 
     accounts = requests.get(api_url + 'accounts', auth=auth)
     for account in accounts.json():
         if account['currency'] == 'USD':
+            CASH_ACCOUNT = account['id']
             CASH_BALANCE = float(account['available'])
         elif account['currency'] == 'BTC':
+            BTC_ACCOUNT = account['id']
             BTC_BALANCE = float(account['available'])
 
-    time.sleep(1)
-    print(BTC_data)
-    print(dataframe)
+    print(CASH_ACCOUNT)
+    print(CASH_BALANCE)
+    print(BTC_ACCOUNT)
+    print(BTC_BALANCE)    
+
+    long_flag = True if BTC_BALANCE*50000>CASH_BALANCE else False # TODO: dynamic BTC price to calculate value of BTC
+
     curr_data = requests.get(api_url + 'products/BTC-USD/book', auth=auth).json()
-    print(dataframe['MACD'].iloc[-1])
+    text = json.dumps(curr_data, sort_keys=True, indent=4)
+    print(text)
+
+    while(True):
+        print(long_flag)
+        BTC_data.append([time.time(),curr_data['asks'][0][0],curr_data['asks'][0][1],curr_data['bids'][0][0],curr_data['bids'][0][1]])
+        dataframe = pd.DataFrame(BTC_data)
+        dataframe.columns = ['Unix Timestamp', 'Ask Price', 'Ask Size', 'Bid Price', 'Bid Size']
+
+        dataframe['Average Price'] = dataframe.apply(lambda row: (float(row['Ask Price'])+float(row['Bid Price']))/2, axis=1)
+
+        ShortEMA = dataframe['Average Price'].ewm(span=12,adjust=False).mean()
+        LongEMA = dataframe['Average Price'].ewm(span=26,adjust=False).mean()
+        MACD = ShortEMA - LongEMA
+        signal = MACD.ewm(span=9,adjust=False).mean()
+
+        dataframe['ShortEMA'] = ShortEMA
+        dataframe['LongEMA'] = LongEMA
+        dataframe['MACD'] = MACD
+        dataframe['Signal'] = signal
+
+        curr_bid = float(dataframe['Bid Price'].iloc[-1])
+        print('CURRENT BID: ', curr_bid)
+        print('SELL FEE: ', curr_bid*BTC_BALANCE*FEE_PERCENT)
+        print('NEW COST BASIS: ', ((cost_basis*BTC_BALANCE)+(curr_bid*BTC_BALANCE*FEE_PERCENT))/BTC_BALANCE)
+
+        if long_flag == False and dataframe['MACD'].iloc[-1] > dataframe['Signal'].iloc[-1]:
+            buy(dataframe)
+        elif long_flag == True and dataframe['MACD'].iloc[-1] < dataframe['Signal'].iloc[-1] and curr_bid > ((cost_basis*BTC_BALANCE)+(curr_bid*BTC_BALANCE*FEE_PERCENT))/BTC_BALANCE:
+            sell(dataframe)
+
+        accounts = requests.get(api_url + 'accounts', auth=auth)
+        for account in accounts.json():
+            if account['currency'] == 'USD':
+                CASH_BALANCE = float(account['available'])
+            elif account['currency'] == 'BTC':
+                BTC_BALANCE = float(account['available'])
+
+        time.sleep(1)
+        print(BTC_data)
+        print(dataframe)
+        curr_data = requests.get(api_url + 'products/BTC-USD/book', auth=auth).json()
+        print(dataframe['MACD'].iloc[-1])
 
 
+bot()
 #text = json.dumps(r.json(), sort_keys=True, indent=4)
 #print (text)
 
