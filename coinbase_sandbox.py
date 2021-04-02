@@ -137,13 +137,8 @@ def sell(dataframe):
 #text = json.dumps(r.json(), sort_keys=True, indent=4)
 #print (text)
 
-auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
-
-def bot():
-    global CASH_ACCOUNT, BTC_ACCOUNT, CASH_BALANCE, BTC_BALANCE, long_flag, cost_basis
-    
-    BTC_data = deque(maxlen=200)
-
+def initializeAccountInfo():
+    global CASH_ACCOUNT, BTC_ACCOUNT, CASH_BALANCE, BTC_BALANCE
     accounts = requests.get(api_url + 'accounts', auth=auth)
     for account in accounts.json():
         if account['currency'] == 'USD':
@@ -153,16 +148,28 @@ def bot():
             BTC_ACCOUNT = account['id']
             BTC_BALANCE = float(account['available'])
 
+
+auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
+
+def bot():
+    global CASH_ACCOUNT, BTC_ACCOUNT, CASH_BALANCE, BTC_BALANCE, long_flag, cost_basis
+    
+    BTC_data = deque(maxlen=200)
+
+    initializeAccountInfo()
+
     print(CASH_ACCOUNT)
     print(CASH_BALANCE)
     print(BTC_ACCOUNT)
-    print(BTC_BALANCE)    
-
-    long_flag = True if BTC_BALANCE*50000>CASH_BALANCE else False # TODO: dynamic BTC price to calculate value of BTC
+    print(BTC_BALANCE)  
 
     curr_data = requests.get(api_url + 'products/BTC-USD/book', auth=auth).json()
+    curr_bid = float(curr_data['bids'][0][0])
     text = json.dumps(curr_data, sort_keys=True, indent=4)
-    print(text)
+    print(text)  
+
+    long_flag = True if BTC_BALANCE*curr_bid > CASH_BALANCE else False
+
 
     while(True):
         print(long_flag)
