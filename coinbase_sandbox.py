@@ -55,6 +55,38 @@ def recordActivity(side,price,btc_quantity,usd_value,fees,cost_basis,profit):
         dateTime = datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
         record_activity.writerow([timestamp,dateTime,side,price,btc_quantity,usd_value,fees,cost_basis,profit])
 
+def updateFeePercent(): # assuming Taker fee classification to be safe. Percents current as of 4/3/21
+    global FEE_PERCENT
+
+    fee_table = {
+        10000: .005,
+        50000: .0035,
+        100000: .0025,
+        1000000: .002,
+        10000000: .0018,
+        50000000: .0015,
+        100000000: .001,
+        300000000: .0007,
+        500000000: .0006,
+        1000000000: .0005
+    }
+    timestamp = int(time.time())
+    start_time = timestamp-2592000 # number of seconds in last 30 days
+    activity = pd.read_csv('trade_activity.csv')
+    frame = pd.DataFrame(activity)
+    total = 0
+    frame = frame.iloc[::-1]
+    for index,row in frame.iterrows():
+        if row['Unix Timestamp'] > start_time:
+            total += row['USD Value']
+        else:
+            break
+    for key in fee_table:
+        if total < key:
+            FEE_PERCENT = fee_table[key]
+            return
+    FEE_PERCENT = fee_table[list(fee_table)[-1]]
+
 def buy(dataframe):
     global long_flag
     global cost_basis
@@ -91,6 +123,7 @@ def buy(dataframe):
         usd_value = effective_order_size*curr_ask
         fee = max_order_size-(effective_order_size*curr_ask)
         recordActivity('BUY',curr_ask,effective_order_size,usd_value,fee,cost_basis,0)
+        updateFeePercent()
     time.sleep(1) # allow time for order to fill
     orders = requests.get(api_url + 'orders', auth=auth)
     print(orders.json())
@@ -126,6 +159,7 @@ def sell(dataframe):
         fee = (max_order_size-effective_order_size)*curr_bid
         profit = (curr_bid-final_cost_basis)*effective_order_size
         recordActivity('SELL',curr_bid,effective_order_size,usd_value,fee,final_cost_basis,profit)
+        updateFeePercent()
     time.sleep(1) # allow time for order to fill
     orders = requests.get(api_url + 'orders', auth=auth)
     print(orders.json())
@@ -198,37 +232,6 @@ def initializeCostBasis():
     if frame.iloc[-1]['Trade Side'] == 'BUY':
         cost_basis = frame.iloc[-1]['Cost Basis']
 
-def updateFeePercent(): # assuming Taker fee classification to be safe. Percents current as of 4/3/21
-    global FEE_PERCENT
-
-    fee_table = {
-        10000: .005,
-        50000: .0035,
-        100000: .0025,
-        1000000: .002,
-        10000000: .0018,
-        50000000: .0015,
-        100000000: .001,
-        300000000: .0007,
-        500000000: .0006,
-        1000000000: .0005
-    }
-    timestamp = int(time.time())
-    start_time = timestamp-2592000 # number of seconds in last 30 days
-    activity = pd.read_csv('trade_activity.csv')
-    frame = pd.DataFrame(activity)
-    total = 0
-    frame = frame.iloc[::-1]
-    for index,row in frame.iterrows():
-        if row['Unix Timestamp'] > start_time:
-            total += row['USD Value']
-        else:
-            break
-    for key in fee_table:
-        if total < key:
-            FEE_PERCENT = fee_table[key]
-            return
-    FEE_PERCENT = fee_table[list(fee_table)[-1]]
 
 auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
