@@ -48,6 +48,13 @@ class CoinbaseAuth(AuthBase): # taken from Coinbase API docs to ensure protocol
         })
         return request
 
+def recordActivity(side,price,btc_quantity,usd_value,fees,cost_basis,profit):
+    with open('trade_activity.csv', mode='a') as trade_activity:
+        record_activity = csv.writer(trade_activity, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        timestamp = int(time.time())
+        dateTime = datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        record_activity.writerow([timestamp,dateTime,side,price,btc_quantity,usd_value,fees,cost_basis,profit])
+
 def buy(dataframe):
     global long_flag
     global cost_basis
@@ -81,6 +88,9 @@ def buy(dataframe):
         long_flag = True
         cost_basis = max_order_size/effective_order_size
         print('COST BASIS AFTER BUY: ', cost_basis)
+        usd_value = effective_order_size*curr_ask
+        fee = max_order_size-effective_order_size
+        recordActivity('BUY',curr_ask,effective_order_size,usd_value,fee,cost_basis,0)
     time.sleep(1) # allow time for order to fill
     orders = requests.get(api_url + 'orders', auth=auth)
     print(orders.json())
@@ -91,13 +101,15 @@ def buy(dataframe):
 def sell(dataframe):
     global long_flag
     curr_bid = float(dataframe['Bid Price'].iloc[-1])
+    final_cost_basis = ((cost_basis*BTC_BALANCE)+(curr_bid*BTC_BALANCE*FEE_PERCENT))/BTC_BALANCE
     max_order_size = min(float(BTC_BALANCE),10000)
+    effective_order_size = truncate(max_order_size/(1+FEE_PERCENT),8)
     order_details = {
         'type': 'limit',
         'side': 'sell',
         'product_id': 'BTC-USD',
         'price': curr_bid, # order limit is current ask price for fast fill 
-        'size': truncate(max_order_size/(1+FEE_PERCENT),8) # max trade size accounting for fee % and maximum size precision
+        'size': effective_order_size # max trade size accounting for fee % and maximum size precision
     }
     order = requests.post(api_url + 'orders', json=order_details, auth=auth)
     if order.status_code != 200:
@@ -110,6 +122,10 @@ def sell(dataframe):
         text = json.dumps(order.json(), sort_keys=True, indent=4)
         print (text)
         long_flag = False
+        usd_value = effective_order_size*curr_bid
+        fee = (max_order_size-effective_order_size)*curr_bid
+        profit = (final_cost_basis-curr_bid)*effective_order_size
+        recordActivity('SELL',curr_bid,effective_order_size,usd_value,fee,final_cost_basis,profit)
     time.sleep(1) # allow time for order to fill
     orders = requests.get(api_url + 'orders', auth=auth)
     print(orders.json())
@@ -176,18 +192,13 @@ def getMarketData(BTC_data):
     return dataframe
 
 
+
 auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
 def bot():
     global CASH_ACCOUNT, BTC_ACCOUNT, CASH_BALANCE, BTC_BALANCE, long_flag, cost_basis
 
-    with open('trade_activity.csv', mode='a') as trade_activity:
-        record_activity = csv.writer(trade_activity, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        timestamp = int(time.time())
-        dateTime = datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
-        record_activity.writerow([timestamp,dateTime, 'BUY', 50000,100,0])
-        record_activity.writerow([timestamp,dateTime, 'SELL', 51000,100,1000])
-
+    
 
     BTC_data = deque(maxlen=200)
 
