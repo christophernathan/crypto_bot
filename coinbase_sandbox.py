@@ -201,7 +201,7 @@ def initializeCostBasis():
 def updateFeePercent(): # assuming Taker fee classification to be safe. Percents current as of 4/3/21
     global FEE_PERCENT
 
-    percent_table = {
+    fee_table = {
         10000: .005,
         50000: .0035,
         100000: .0025,
@@ -219,13 +219,16 @@ def updateFeePercent(): # assuming Taker fee classification to be safe. Percents
     frame = pd.DataFrame(activity)
     total = 0
     frame = frame.iloc[::-1]
-    print(frame)
     for index,row in frame.iterrows():
         if row['Unix Timestamp'] > start_time:
             total += row['USD Value']
         else:
             break
-    
+    for key in fee_table:
+        if total < key:
+            FEE_PERCENT = fee_table[key]
+            return
+    FEE_PERCENT = fee_table[list(fee_table)[-1]]
 
 auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
@@ -235,6 +238,7 @@ def bot():
     BTC_data = deque(maxlen=200)
 
     updateFeePercent()
+    print(FEE_PERCENT)
 
     initializeCostBasis()
     initializeAccountInfo()
