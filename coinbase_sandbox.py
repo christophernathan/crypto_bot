@@ -3,6 +3,8 @@ from requests.auth import AuthBase
 import pandas as pd
 from collections import deque
 import math
+import csv
+from datetime import datetime
 
 def truncate(number, digits) -> float:
     stepper = 10.0 ** digits
@@ -178,6 +180,14 @@ auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
 def bot():
     global CASH_ACCOUNT, BTC_ACCOUNT, CASH_BALANCE, BTC_BALANCE, long_flag, cost_basis
+
+    with open('trade_activity.csv', mode='a') as trade_activity:
+        record_activity = csv.writer(trade_activity, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        timestamp = int(time.time())
+        dateTime = datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        record_activity.writerow([timestamp,dateTime, 'BUY', 50000,100,0])
+        record_activity.writerow([timestamp,dateTime, 'SELL', 51000,100,1000])
+
 
     BTC_data = deque(maxlen=200)
 
