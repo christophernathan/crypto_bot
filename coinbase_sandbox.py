@@ -198,7 +198,10 @@ auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 def bot():
     global CASH_ACCOUNT, BTC_ACCOUNT, CASH_BALANCE, BTC_BALANCE, long_flag, cost_basis
 
-    
+    activity = pd.read_csv('trade_activity.csv')
+    frame = pd.DataFrame(activity)
+    if frame.iloc[-1]['Trade Side'] == 'BUY':
+        cost_basis = frame.iloc[-1]['Cost Basis']
 
     BTC_data = deque(maxlen=200)
 
