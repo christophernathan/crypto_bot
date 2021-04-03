@@ -89,7 +89,7 @@ def buy(dataframe):
         cost_basis = max_order_size/effective_order_size
         print('COST BASIS AFTER BUY: ', cost_basis)
         usd_value = effective_order_size*curr_ask
-        fee = max_order_size-effective_order_size
+        fee = max_order_size-(effective_order_size*curr_ask)
         recordActivity('BUY',curr_ask,effective_order_size,usd_value,fee,cost_basis,0)
     time.sleep(1) # allow time for order to fill
     orders = requests.get(api_url + 'orders', auth=auth)
@@ -124,7 +124,7 @@ def sell(dataframe):
         long_flag = False
         usd_value = effective_order_size*curr_bid
         fee = (max_order_size-effective_order_size)*curr_bid
-        profit = (final_cost_basis-curr_bid)*effective_order_size
+        profit = (curr_bid-final_cost_basis)*effective_order_size
         recordActivity('SELL',curr_bid,effective_order_size,usd_value,fee,final_cost_basis,profit)
     time.sleep(1) # allow time for order to fill
     orders = requests.get(api_url + 'orders', auth=auth)
@@ -198,7 +198,34 @@ def initializeCostBasis():
     if frame.iloc[-1]['Trade Side'] == 'BUY':
         cost_basis = frame.iloc[-1]['Cost Basis']
 
+def updateFeePercent(): # assuming Taker fee classification to be safe. Percents current as of 4/3/21
+    global FEE_PERCENT
 
+    percent_table = {
+        10000: .005,
+        50000: .0035,
+        100000: .0025,
+        1000000: .002,
+        10000000: .0018,
+        50000000: .0015,
+        100000000: .001,
+        300000000: .0007,
+        500000000: .0006,
+        1000000000: .0005
+    }
+    timestamp = int(time.time())
+    start_time = timestamp-2592000 # number of seconds in last 30 days
+    activity = pd.read_csv('trade_activity.csv')
+    frame = pd.DataFrame(activity)
+    total = 0
+    frame = frame.iloc[::-1]
+    print(frame)
+    for index,row in frame.iterrows():
+        if row['Unix Timestamp'] > start_time:
+            total += row['USD Value']
+        else:
+            break
+    
 
 auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
@@ -206,6 +233,8 @@ def bot():
     global CASH_ACCOUNT, BTC_ACCOUNT, CASH_BALANCE, BTC_BALANCE, long_flag, cost_basis
 
     BTC_data = deque(maxlen=200)
+
+    updateFeePercent()
 
     initializeCostBasis()
     initializeAccountInfo()
