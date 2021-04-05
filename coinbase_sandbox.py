@@ -123,7 +123,7 @@ def buy(dataframe):
         recordError('BUY',order.status_code,order.json()['message'])
     time.sleep(1)
     order = requests.get(api_url + 'orders/' + order_id, auth=auth)
-    if True:
+    if order.status_code == 200 and order.json()['status'] == 'done':
         print("BUY SUCCEEDED")
         text = json.dumps(order.json(), sort_keys=True, indent=4)
         print (text)
