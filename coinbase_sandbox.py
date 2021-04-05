@@ -5,21 +5,25 @@ from collections import deque
 import math
 import csv
 from datetime import datetime
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def truncate(number, digits) -> float:
     stepper = 10.0 ** digits
     return math.trunc(stepper * number) / stepper
 
-API_SECRET = 'vL83tlsKCU1a1+sV57t0PGO/Ow23WqU72airLjSTXv8uXJBcC9TtbJvtUX4D8qauwheW62BgXLtGYUW+QsoAKQ=='
-API_KEY = '4a60aec62e8a0120bee80c0549699f6e'
-API_PASS = 'kgs978a22jf'
+API_SECRET = os.environ.get('API_SECRET')
+API_KEY = os.environ.get('API_KEY')
+API_PASS = os.environ.get('API_PASS')
 api_url = 'https://api-public.sandbox.pro.coinbase.com/'
 PAYMENT_METHOD_ID = ''
 CASH_ACCOUNT = ''
 BTC_ACCOUNT = ''
 CASH_BALANCE = 0
 BTC_BALANCE = 0
-FEE_PERCENT = .005 # .5% fee per transaction TODO: dynamic fee calculation
+FEE_PERCENT = .005
 long_flag = False
 cost_basis = 0
 
