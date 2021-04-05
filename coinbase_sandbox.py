@@ -121,7 +121,9 @@ def buy(dataframe):
     order_id = order.json()['id']
     if order.status_code != 200:
         recordError('BUY',order.status_code,order.json()['message'])
-    else:
+    time.sleep(1)
+    order = requests.get(api_url + 'orders/' + order_id, auth=auth)
+    if True:
         print("BUY SUCCEEDED")
         text = json.dumps(order.json(), sort_keys=True, indent=4)
         print (text)
@@ -245,10 +247,13 @@ order_details = {
         'type': 'limit',
         'side': 'buy',
         'product_id': 'BTC-USD',
-        'price': 0, # order limit is current ask price for fast fill 
-        'size': .00000000001 # max trade size accounting for fee % and maximum size precision
+        'price': 60000, # order limit is current ask price for fast fill 
+        'size': 0.001 # max trade size accounting for fee % and maximum size precision
     }
 order = requests.post(api_url + 'orders', json=order_details, auth=auth)
+print(order.json())
+order_id = order.json()['id']
+order = requests.get(api_url + 'orders/' + order_id, auth=auth)
 print(order.json())
 
 def bot():
