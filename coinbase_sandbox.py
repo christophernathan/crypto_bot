@@ -59,6 +59,13 @@ def recordActivity(side,price,btc_quantity,usd_value,fees,cost_basis,profit):
         dateTime = datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
         record_activity.writerow([timestamp,dateTime,side,price,btc_quantity,usd_value,fees,cost_basis,profit])
 
+def recordError(side,status_code,reason):
+    with open('trade_errors.csv', mode='a') as trade_errors:
+        record_error = csv.writer(trade_errors, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        timestamp = int(time.time())
+        dateTime = datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        record_error.writerow([timestamp,dateTime,side,status_code,reason])
+
 def updateFeePercent(): # assuming Taker fee classification to be safe. Percents current as of 4/3/21
     global FEE_PERCENT
 
@@ -92,8 +99,7 @@ def updateFeePercent(): # assuming Taker fee classification to be safe. Percents
     FEE_PERCENT = fee_table[list(fee_table)[-1]]
 
 def buy(dataframe):
-    global long_flag
-    global cost_basis
+    global long_flag, cost_basis
     print(dataframe)
     curr_ask = float(dataframe['Ask Price'].iloc[-1])
     max_order_size = min(float(CASH_BALANCE),10000*curr_ask)
@@ -112,11 +118,9 @@ def buy(dataframe):
         'size': effective_order_size # max trade size accounting for fee % and maximum size precision
     }
     order = requests.post(api_url + 'orders', json=order_details, auth=auth)
+    order_id = order.json()['id']
     if order.status_code != 200:
-        print("BUY FAILED")
-        text = json.dumps(order.json(), sort_keys=True, indent=4)
-        print (text)
-        #TODO: log error
+        recordError('BUY',order.status_code,order.json()['message'])
     else:
         print("BUY SUCCEEDED")
         text = json.dumps(order.json(), sort_keys=True, indent=4)
@@ -149,11 +153,9 @@ def sell(dataframe):
         'size': effective_order_size # max trade size accounting for fee % and maximum size precision
     }
     order = requests.post(api_url + 'orders', json=order_details, auth=auth)
+    order_id = order.json()['id']
     if order.status_code != 200:
-        print("SELL FAILED")
-        text = json.dumps(order.json(), sort_keys=True, indent=4)
-        print (text)
-        #TODO: log error
+        recordError('SELL',order.status_code,order.json()['message'])
     else:
         print("SELL SUCCEEDED")
         text = json.dumps(order.json(), sort_keys=True, indent=4)
@@ -238,6 +240,16 @@ def initializeCostBasis():
 
 
 auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
+
+order_details = {
+        'type': 'limit',
+        'side': 'buy',
+        'product_id': 'BTC-USD',
+        'price': 0, # order limit is current ask price for fast fill 
+        'size': .00000000001 # max trade size accounting for fee % and maximum size precision
+    }
+order = requests.post(api_url + 'orders', json=order_details, auth=auth)
+print(order.json())
 
 def bot():
     global CASH_ACCOUNT, BTC_ACCOUNT, CASH_BALANCE, BTC_BALANCE, long_flag, cost_basis
