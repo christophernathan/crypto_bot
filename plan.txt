@@ -10,3 +10,8 @@ if positive macd crossover and holding cash --> put in limit order for current a
 if negative macd crossover --> check if btc holdings are nonzero --> if holding btc and current bid is greater than cost basis + fees, sell at bid. Else, do nothing
     - if filled, log sell price, amount, profit, time
     - if macd goes above signal before order is filled, cancel order
+
+
+break up into diff files
+testing
+requirements or virtual env

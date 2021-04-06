@@ -121,30 +121,28 @@ def buy(dataframe):
     order_id = order.json()['id']
     if order.status_code != 200:
         recordError('BUY',order.status_code,order.json()['message'])
-    time.sleep(1)
+    time.sleep(1) # allow time for order to fill
     order = requests.get(api_url + 'orders/' + order_id, auth=auth)
     if order.status_code == 200 and order.json()['status'] == 'done':
         print("BUY SUCCEEDED")
         text = json.dumps(order.json(), sort_keys=True, indent=4)
         print (text)
         long_flag = True
-        cost_basis = max_order_size/effective_order_size
+        executed_value = float(order.json()['executed_value'])
+        fill_size = float(order.json()['size'])
+        fill_price = executed_value/fill_size
+        fill_fee = float(order.json()['fill_fees'])
+        cost_basis = (executed_value+fill_fee)/fill_size
         print('COST BASIS AFTER BUY: ', cost_basis)
-        usd_value = effective_order_size*curr_ask
-        fee = max_order_size-(effective_order_size*curr_ask)
-        recordActivity('BUY',curr_ask,effective_order_size,usd_value,fee,cost_basis,0)
+        recordActivity('BUY',fill_price,fill_size,executed_value,fill_fee,cost_basis,0)
         updateFeePercent()
-    time.sleep(1) # allow time for order to fill
-    orders = requests.get(api_url + 'orders', auth=auth)
-    print(orders.json())
-    if len(orders.json()) != 0:
-        print('CANCELLING BUY')
+    else:
         delete = requests.delete(api_url + 'orders', auth=auth)
+        recordError('BUY',order.status_code,'CANCELED')
 
 def sell(dataframe):
     global long_flag
     curr_bid = float(dataframe['Bid Price'].iloc[-1])
-    final_cost_basis = ((cost_basis*BTC_BALANCE)+(curr_bid*BTC_BALANCE*FEE_PERCENT))/BTC_BALANCE
     max_order_size = min(float(BTC_BALANCE),10000)
     effective_order_size = truncate(max_order_size/(1+FEE_PERCENT),8)
     order_details = {
@@ -158,23 +156,24 @@ def sell(dataframe):
     order_id = order.json()['id']
     if order.status_code != 200:
         recordError('SELL',order.status_code,order.json()['message'])
-    else:
+    time.sleep(1) # allow time for order to fill
+    order = requests.get(api_url + 'orders/' + order_id, auth=auth)
+    if order.status_code == 200 and order.json()['status'] == 'done':
         print("SELL SUCCEEDED")
         text = json.dumps(order.json(), sort_keys=True, indent=4)
         print (text)
         long_flag = False
-        usd_value = effective_order_size*curr_bid
-        fee = (max_order_size-effective_order_size)*curr_bid
-        profit = (curr_bid-final_cost_basis)*effective_order_size
-        recordActivity('SELL',curr_bid,effective_order_size,usd_value,fee,final_cost_basis,profit)
+        executed_value = float(order.json()['executed_value'])
+        fill_size = float(order.json()['size'])
+        fill_price = executed_value/fill_size
+        fill_fee = float(order.json()['fill_fees'])
+        final_cost_basis = ((cost_basis*fill_size)+fill_fee)/fill_size
+        profit = (fill_price-final_cost_basis)*fill_size
+        recordActivity('SELL',fill_price,fill_size,executed_value,fill_fee,final_cost_basis,profit)
         updateFeePercent()
-    time.sleep(1) # allow time for order to fill
-    orders = requests.get(api_url + 'orders', auth=auth)
-    print(orders.json())
-    if len(orders.json()) != 0:
-        print('CANCELLING SELL')
+    else:
         delete = requests.delete(api_url + 'orders', auth=auth)
-
+        recordError('BUY',order.status_code,'CANCELED')
 
 #order_details = {
 #    'type': 'limit',
@@ -245,10 +244,10 @@ auth = CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
 order_details = {
         'type': 'limit',
-        'side': 'buy',
+        'side': 'sell',
         'product_id': 'BTC-USD',
-        'price': 60000, # order limit is current ask price for fast fill 
-        'size': 0.001 # max trade size accounting for fee % and maximum size precision
+        'price': 1, # order limit is current ask price for fast fill 
+        'size': 0.01 # max trade size accounting for fee % and maximum size precision
     }
 order = requests.post(api_url + 'orders', json=order_details, auth=auth)
 print(order.json())
