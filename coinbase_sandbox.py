@@ -8,7 +8,7 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 
-from utils import auth, write_files
+from utils import auth, write_files, account
 
 load_dotenv()
 
@@ -194,13 +194,6 @@ def getMarketData(BTC_data):
     dataframe['Signal'] = signal
     return dataframe
 
-def initializeCostBasis():
-    global cost_basis
-    activity = pd.read_csv('trade_activity.csv')
-    frame = pd.DataFrame(activity)
-    if frame.iloc[-1]['Trade Side'] == 'BUY':
-        cost_basis = frame.iloc[-1]['Cost Basis']
-
 
 auth = auth.CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
@@ -225,7 +218,7 @@ def bot():
     updateFeePercent()
     print(FEE_PERCENT)
 
-    initializeCostBasis()
+    cost_basis = account.initializeCostBasis()
     initializeAccountInfo()
 
     print(CASH_ACCOUNT)
