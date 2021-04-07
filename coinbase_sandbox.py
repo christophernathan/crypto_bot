@@ -8,7 +8,7 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 
-from utils import auth
+from utils import auth, write_files
 
 load_dotenv()
 
@@ -27,20 +27,6 @@ BTC_BALANCE = 0
 FEE_PERCENT = .005
 long_flag = False
 cost_basis = 0
-
-def recordActivity(side,price,btc_quantity,usd_value,fees,cost_basis,profit):
-    with open('trade_activity.csv', mode='a') as trade_activity:
-        record_activity = csv.writer(trade_activity, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        timestamp = int(time.time())
-        dateTime = datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
-        record_activity.writerow([timestamp,dateTime,side,price,btc_quantity,usd_value,fees,cost_basis,profit])
-
-def recordError(side,status_code,reason):
-    with open('trade_errors.csv', mode='a') as trade_errors:
-        record_error = csv.writer(trade_errors, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        timestamp = int(time.time())
-        dateTime = datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
-        record_error.writerow([timestamp,dateTime,side,status_code,reason])
 
 def updateFeePercent(): # assuming Taker fee classification to be safe. Percents current as of 4/3/21
     global FEE_PERCENT
@@ -96,7 +82,7 @@ def buy(dataframe):
     order = requests.post(api_url + 'orders', json=order_details, auth=auth)
     order_id = order.json()['id']
     if order.status_code != 200:
-        recordError('BUY',order.status_code,order.json()['message'])
+        write_files.recordError('BUY',order.status_code,order.json()['message'])
     time.sleep(1) # allow time for order to fill
     order = requests.get(api_url + 'orders/' + order_id, auth=auth)
     if order.status_code == 200 and order.json()['status'] == 'done':
@@ -110,11 +96,11 @@ def buy(dataframe):
         fill_fee = float(order.json()['fill_fees'])
         cost_basis = (executed_value+fill_fee)/fill_size
         print('COST BASIS AFTER BUY: ', cost_basis)
-        recordActivity('BUY',fill_price,fill_size,executed_value,fill_fee,cost_basis,0)
+        write_files.recordActivity('BUY',fill_price,fill_size,executed_value,fill_fee,cost_basis,0)
         updateFeePercent()
     else:
         delete = requests.delete(api_url + 'orders', auth=auth)
-        recordError('BUY',order.status_code,'CANCELED')
+        write_files.recordError('BUY',order.status_code,'CANCELED')
 
 def sell(dataframe):
     global long_flag
@@ -131,7 +117,7 @@ def sell(dataframe):
     order = requests.post(api_url + 'orders', json=order_details, auth=auth)
     order_id = order.json()['id']
     if order.status_code != 200:
-        recordError('SELL',order.status_code,order.json()['message'])
+        write_files.recordError('SELL',order.status_code,order.json()['message'])
     time.sleep(1) # allow time for order to fill
     order = requests.get(api_url + 'orders/' + order_id, auth=auth)
     if order.status_code == 200 and order.json()['status'] == 'done':
@@ -145,11 +131,11 @@ def sell(dataframe):
         fill_fee = float(order.json()['fill_fees'])
         final_cost_basis = ((cost_basis*fill_size)+fill_fee)/fill_size
         profit = (fill_price-final_cost_basis)*fill_size
-        recordActivity('SELL',fill_price,fill_size,executed_value,fill_fee,final_cost_basis,profit)
+        write_files.recordActivity('SELL',fill_price,fill_size,executed_value,fill_fee,final_cost_basis,profit)
         updateFeePercent()
     else:
         delete = requests.delete(api_url + 'orders', auth=auth)
-        recordError('BUY',order.status_code,'CANCELED')
+        write_files.recordError('BUY',order.status_code,'CANCELED')
 
 #order_details = {
 #    'type': 'limit',
