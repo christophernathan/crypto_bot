@@ -1,4 +1,4 @@
-from coinbase_sandbox import bot
+from bot import bot
 
 def main():
     bot()

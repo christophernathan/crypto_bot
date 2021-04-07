@@ -1,8 +1,8 @@
 import pandas as pd
 import requests, time
 
-def initializeCostBasis():
-    activity = pd.read_csv('../trade_activity.csv')
+def initializeCostBasis(csv_path):
+    activity = pd.read_csv(csv_path)
     frame = pd.DataFrame(activity)
     if frame.iloc[-1]['Trade Side'] == 'BUY':
         return frame.iloc[-1]['Cost Basis']
@@ -27,7 +27,7 @@ def updateAccountBalances(api_url, auth):
             BTC_BALANCE = float(account['available'])
     return CASH_BALANCE, BTC_BALANCE
 
-def updateFeePercent(): # assuming Taker fee classification to be safe. Percents current as of 4/3/21
+def updateFeePercent(csv_path): # assuming Taker fee classification to be safe. Percents current as of 4/3/21
     fee_table = {
         10000: .005,
         50000: .0035,
@@ -42,7 +42,7 @@ def updateFeePercent(): # assuming Taker fee classification to be safe. Percents
     }
     timestamp = int(time.time())
     start_time = timestamp-2592000 # number of seconds in last 30 days
-    activity = pd.read_csv('../trade_activity.csv')
+    activity = pd.read_csv(csv_path)
     frame = pd.DataFrame(activity)
     total = 0
     frame = frame.iloc[::-1]
@@ -54,6 +54,5 @@ def updateFeePercent(): # assuming Taker fee classification to be safe. Percents
     for key in fee_table:
         if total < key:
             FEE_PERCENT = fee_table[key]
-            return
+            break
     return fee_table[list(fee_table)[-1]]
-    
