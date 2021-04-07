@@ -18,7 +18,6 @@ API_SECRET = os.environ.get('API_SECRET')
 API_KEY = os.environ.get('API_KEY')
 API_PASS = os.environ.get('API_PASS')
 api_url = 'https://api-public.sandbox.pro.coinbase.com/'
-PAYMENT_METHOD_ID = ''
 CASH_ACCOUNT = ''
 BTC_ACCOUNT = ''
 CASH_BALANCE = 0
@@ -302,23 +301,3 @@ def bot():
 
 
 bot()
-#text = json.dumps(r.json(), sort_keys=True, indent=4)
-#print (text)
-
-r = requests.get(api_url + 'payment-methods',auth=auth)
-text = json.dumps(r.json(), sort_keys=True, indent=4)
-#print (text)
-
-for method in r.json():
-    if method['type'] == 'ach_bank_account':
-        PAYMENT_METHOD_ID = method['id']
-
-body = {
-    'amount': 10,
-    'currency': 'USD',
-    'payment_method_id': PAYMENT_METHOD_ID
-}
-
-#r = requests.post(api_url + 'deposits/payment-method', json=body, auth=auth)
-#text = json.dumps(r.json(), sort_keys=True, indent=4)
-#print (text)
