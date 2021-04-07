@@ -8,7 +8,7 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 
-from utils import auth, write_files, account
+from utils import auth, write_files, account, market
 
 load_dotenv()
 
@@ -28,40 +28,9 @@ FEE_PERCENT = .005
 long_flag = False
 cost_basis = 0
 
-def updateFeePercent(): # assuming Taker fee classification to be safe. Percents current as of 4/3/21
-    global FEE_PERCENT
-
-    fee_table = {
-        10000: .005,
-        50000: .0035,
-        100000: .0025,
-        1000000: .002,
-        10000000: .0018,
-        50000000: .0015,
-        100000000: .001,
-        300000000: .0007,
-        500000000: .0006,
-        1000000000: .0005
-    }
-    timestamp = int(time.time())
-    start_time = timestamp-2592000 # number of seconds in last 30 days
-    activity = pd.read_csv('trade_activity.csv')
-    frame = pd.DataFrame(activity)
-    total = 0
-    frame = frame.iloc[::-1]
-    for index,row in frame.iterrows():
-        if row['Unix Timestamp'] > start_time:
-            total += row['USD Value']
-        else:
-            break
-    for key in fee_table:
-        if total < key:
-            FEE_PERCENT = fee_table[key]
-            return
-    FEE_PERCENT = fee_table[list(fee_table)[-1]]
 
 def buy(dataframe):
-    global long_flag, cost_basis
+    global long_flag, cost_basis, FEE_PERCENT
     print(dataframe)
     curr_ask = float(dataframe['Ask Price'].iloc[-1])
     max_order_size = min(float(CASH_BALANCE),10000*curr_ask)
@@ -97,13 +66,13 @@ def buy(dataframe):
         cost_basis = (executed_value+fill_fee)/fill_size
         print('COST BASIS AFTER BUY: ', cost_basis)
         write_files.recordActivity('BUY',fill_price,fill_size,executed_value,fill_fee,cost_basis,0)
-        updateFeePercent()
+        FEE_PERCENT = account.updateFeePercent()
     else:
         delete = requests.delete(api_url + 'orders', auth=auth)
         write_files.recordError('BUY',order.status_code,'CANCELED')
 
 def sell(dataframe):
-    global long_flag
+    global long_flag, FEE_PERCENT
     curr_bid = float(dataframe['Bid Price'].iloc[-1])
     max_order_size = min(float(BTC_BALANCE),10000)
     effective_order_size = truncate(max_order_size/(1+FEE_PERCENT),8)
@@ -132,7 +101,7 @@ def sell(dataframe):
         final_cost_basis = ((cost_basis*fill_size)+fill_fee)/fill_size
         profit = (fill_price-final_cost_basis)*fill_size
         write_files.recordActivity('SELL',fill_price,fill_size,executed_value,fill_fee,final_cost_basis,profit)
-        updateFeePercent()
+        FEE_PERCENT = account.updateFeePercent()
     else:
         delete = requests.delete(api_url + 'orders', auth=auth)
         write_files.recordError('BUY',order.status_code,'CANCELED')
@@ -158,42 +127,6 @@ def sell(dataframe):
 #text = json.dumps(r.json(), sort_keys=True, indent=4)
 #print (text)
 
-def initializeAccountInfo():
-    global CASH_ACCOUNT, BTC_ACCOUNT, CASH_BALANCE, BTC_BALANCE
-    accounts = requests.get(api_url + 'accounts', auth=auth)
-    for account in accounts.json():
-        if account['currency'] == 'USD':
-            CASH_ACCOUNT = account['id']
-            CASH_BALANCE = float(account['available'])
-        elif account['currency'] == 'BTC':
-            BTC_ACCOUNT = account['id']
-            BTC_BALANCE = float(account['available'])
-
-def updateAccountBalances():
-    global CASH_BALANCE, BTC_BALANCE
-    accounts = requests.get(api_url + 'accounts', auth=auth)
-    for account in accounts.json():
-        if account['currency'] == 'USD':
-            CASH_BALANCE = float(account['available'])
-        elif account['currency'] == 'BTC':
-            BTC_BALANCE = float(account['available'])
-
-def getMarketData(BTC_data):
-    curr_data = requests.get(api_url + 'products/BTC-USD/book', auth=auth).json()
-    BTC_data.append([time.time(),curr_data['asks'][0][0],curr_data['asks'][0][1],curr_data['bids'][0][0],curr_data['bids'][0][1]])
-    dataframe = pd.DataFrame(BTC_data)
-    dataframe.columns = ['Unix Timestamp', 'Ask Price', 'Ask Size', 'Bid Price', 'Bid Size']
-    dataframe['Average Price'] = dataframe.apply(lambda row: (float(row['Ask Price'])+float(row['Bid Price']))/2, axis=1)
-    ShortEMA = dataframe['Average Price'].ewm(span=12,adjust=False).mean()
-    LongEMA = dataframe['Average Price'].ewm(span=26,adjust=False).mean()
-    MACD = ShortEMA - LongEMA
-    signal = MACD.ewm(span=9,adjust=False).mean()
-    dataframe['ShortEMA'] = ShortEMA
-    dataframe['LongEMA'] = LongEMA
-    dataframe['MACD'] = MACD
-    dataframe['Signal'] = signal
-    return dataframe
-
 
 auth = auth.CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
@@ -215,11 +148,11 @@ def bot():
 
     BTC_data = deque(maxlen=200)
 
-    updateFeePercent()
+    FEE_PERCENT = account.updateFeePercent()
     print(FEE_PERCENT)
 
     cost_basis = account.initializeCostBasis()
-    initializeAccountInfo()
+    CASH_ACCOUNT, CASH_BALANCE, BTC_ACCOUNT, BTC_BALANCE = account.initializeAccountInfo(api_url,auth)
 
     print(CASH_ACCOUNT)
     print(CASH_BALANCE)
@@ -235,7 +168,7 @@ def bot():
 
     while(True):
         print(long_flag)
-        dataframe = getMarketData(BTC_data)
+        dataframe = market.getMarketData(api_url,auth,BTC_data)
 
         curr_bid = float(dataframe['Bid Price'].iloc[-1])
         new_cost_basis = ((cost_basis*BTC_BALANCE)+(curr_bid*BTC_BALANCE*FEE_PERCENT))/BTC_BALANCE
@@ -248,7 +181,7 @@ def bot():
         elif long_flag == True and dataframe['MACD'].iloc[-1] < dataframe['Signal'].iloc[-1] and curr_bid > new_cost_basis:
             sell(dataframe)
 
-        updateAccountBalances()
+        CASH_BALANCE, BTC_BALANCE = account.updateAccountBalances(api_url,auth)
 
         time.sleep(1) # TODO: change to 60 seconds when actually using bot for minute quotes
         print(BTC_data)
