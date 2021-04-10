@@ -26,6 +26,7 @@ def buy(api_url, auth, dataframe, long_flag, cost_basis, FEE_PERCENT, CASH_BALAN
     order_id = order.json()['id']
     if order.status_code != 200:
         write_files.recordError('trade_errors.csv','BUY',order.status_code,order.json()['message'])
+        return False,cost_basis,FEE_PERCENT
     time.sleep(1) # allow time for order to fill
     order = requests.get(api_url + 'orders/' + order_id, auth=auth)
     if order.status_code == 200 and order.json()['status'] == 'done':
@@ -42,9 +43,11 @@ def buy(api_url, auth, dataframe, long_flag, cost_basis, FEE_PERCENT, CASH_BALAN
         print('COST BASIS AFTER BUY: ', cost_basis)
         write_files.recordActivity('trade_activity.csv','BUY',fill_price,fill_size,executed_value,fill_fee,cost_basis,0)
         FEE_PERCENT = account.updateFeePercent('trade_activity.csv')
+        return True,cost_basis,FEE_PERCENT
     else:
         delete = requests.delete(api_url + 'orders', auth=auth)
         write_files.recordError('trade_errors.csv','BUY',order.status_code,'CANCELED')
+        return False,cost_basis,FEE_PERCENT
 
 def sell(api_url, auth, dataframe, long_flag, cost_basis, BTC_BALANCE, FEE_PERCENT):
     curr_bid = float(dataframe['Bid Price'].iloc[-1])
@@ -61,6 +64,7 @@ def sell(api_url, auth, dataframe, long_flag, cost_basis, BTC_BALANCE, FEE_PERCE
     order_id = order.json()['id']
     if order.status_code != 200:
         write_files.recordError('trade_errors.csv','SELL',order.status_code,order.json()['message'])
+        return True,cost_basis,FEE_PERCENT
     time.sleep(1) # allow time for order to fill
     order = requests.get(api_url + 'orders/' + order_id, auth=auth)
     if order.status_code == 200 and order.json()['status'] == 'done':
@@ -76,6 +80,8 @@ def sell(api_url, auth, dataframe, long_flag, cost_basis, BTC_BALANCE, FEE_PERCE
         profit = (fill_price-final_cost_basis)*fill_size
         write_files.recordActivity('trade_activity.csv','SELL',fill_price,fill_size,executed_value,fill_fee,final_cost_basis,profit)
         FEE_PERCENT = account.updateFeePercent('trade_activity.csv')
+        return False,cost_basis,FEE_PERCENT
     else:
         delete = requests.delete(api_url + 'orders', auth=auth)
         write_files.recordError('trade_errors.csv','BUY',order.status_code,'CANCELED')
+        return True,cost_basis,FEE_PERCENT
