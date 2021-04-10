@@ -6,6 +6,7 @@ def initializeCostBasis(csv_path):
     frame = pd.DataFrame(activity)
     if frame.iloc[-1]['Trade Side'] == 'BUY':
         return frame.iloc[-1]['Cost Basis']
+    return 0
 
 def initializeAccountInfo(api_url, auth):
     accounts = requests.get(api_url + 'accounts', auth=auth)
@@ -53,6 +54,5 @@ def updateFeePercent(csv_path): # assuming Taker fee classification to be safe. 
             break
     for key in fee_table:
         if total < key:
-            FEE_PERCENT = fee_table[key]
-            break
+            return fee_table[key]
     return fee_table[list(fee_table)[-1]]

@@ -8,7 +8,7 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 
-from utils import auth, write_files, account, market, formatting
+from utils import auth, write_files, account, market, formatting, trade
 
 load_dotenv()
 
@@ -23,83 +23,6 @@ BTC_BALANCE = 0
 FEE_PERCENT = .005
 long_flag = False
 cost_basis = 0
-
-
-def buy(dataframe):
-    global long_flag, cost_basis, FEE_PERCENT
-    print(dataframe)
-    curr_ask = float(dataframe['Ask Price'].iloc[-1])
-    max_order_size = min(float(CASH_BALANCE),10000*curr_ask)
-    effective_order_size = formatting.truncate(max_order_size/(curr_ask*(1+FEE_PERCENT)),8)
-    print(CASH_BALANCE)
-    print(min(float(CASH_BALANCE),10000))
-    print(curr_ask)
-    print(float(dataframe['Ask Price'].iloc[-1]))
-    print(min(float(CASH_BALANCE),10000*curr_ask)/curr_ask)
-    order_details = {
-        'type': 'limit',
-        'side': 'buy',
-        'product_id': 'BTC-USD',
-        'price': curr_ask, # order limit is current ask price for fast fill 
-        'size': effective_order_size # max trade size accounting for fee % and maximum size precision
-    }
-    order = requests.post(api_url + 'orders', json=order_details, auth=auth)
-    order_id = order.json()['id']
-    if order.status_code != 200:
-        write_files.recordError('trade_errors.csv','BUY',order.status_code,order.json()['message'])
-    time.sleep(1) # allow time for order to fill
-    order = requests.get(api_url + 'orders/' + order_id, auth=auth)
-    if order.status_code == 200 and order.json()['status'] == 'done':
-        print("BUY SUCCEEDED")
-        text = json.dumps(order.json(), sort_keys=True, indent=4)
-        print (text)
-        long_flag = True
-        executed_value = float(order.json()['executed_value'])
-        fill_size = float(order.json()['size'])
-        fill_price = executed_value/fill_size
-        fill_fee = float(order.json()['fill_fees'])
-        cost_basis = (executed_value+fill_fee)/fill_size
-        print('COST BASIS AFTER BUY: ', cost_basis)
-        write_files.recordActivity('trade_activity.csv','BUY',fill_price,fill_size,executed_value,fill_fee,cost_basis,0)
-        FEE_PERCENT = account.updateFeePercent('trade_activity.csv')
-    else:
-        delete = requests.delete(api_url + 'orders', auth=auth)
-        write_files.recordError('trade_errors.csv','BUY',order.status_code,'CANCELED')
-
-def sell(dataframe):
-    global long_flag, FEE_PERCENT
-    curr_bid = float(dataframe['Bid Price'].iloc[-1])
-    max_order_size = min(float(BTC_BALANCE),10000)
-    effective_order_size = formatting.truncate(max_order_size/(1+FEE_PERCENT),8)
-    order_details = {
-        'type': 'limit',
-        'side': 'sell',
-        'product_id': 'BTC-USD',
-        'price': curr_bid, # order limit is current ask price for fast fill 
-        'size': effective_order_size # max trade size accounting for fee % and maximum size precision
-    }
-    order = requests.post(api_url + 'orders', json=order_details, auth=auth)
-    order_id = order.json()['id']
-    if order.status_code != 200:
-        write_files.recordError('trade_errors.csv','SELL',order.status_code,order.json()['message'])
-    time.sleep(1) # allow time for order to fill
-    order = requests.get(api_url + 'orders/' + order_id, auth=auth)
-    if order.status_code == 200 and order.json()['status'] == 'done':
-        print("SELL SUCCEEDED")
-        text = json.dumps(order.json(), sort_keys=True, indent=4)
-        print (text)
-        long_flag = False
-        executed_value = float(order.json()['executed_value'])
-        fill_size = float(order.json()['size'])
-        fill_price = executed_value/fill_size
-        fill_fee = float(order.json()['fill_fees'])
-        final_cost_basis = ((cost_basis*fill_size)+fill_fee)/fill_size
-        profit = (fill_price-final_cost_basis)*fill_size
-        write_files.recordActivity('trade_activity.csv','SELL',fill_price,fill_size,executed_value,fill_fee,final_cost_basis,profit)
-        FEE_PERCENT = account.updateFeePercent('trade_activity.csv')
-    else:
-        delete = requests.delete(api_url + 'orders', auth=auth)
-        write_files.recordError('trade_errors.csv','BUY',order.status_code,'CANCELED')
 
 #order_details = {
 #    'type': 'limit',
@@ -135,6 +58,7 @@ def bot():
 
     cost_basis = account.initializeCostBasis('trade_activity.csv')
     CASH_ACCOUNT, CASH_BALANCE, BTC_ACCOUNT, BTC_BALANCE = account.initializeAccountInfo(api_url,auth)
+    cost_basis=0
 
     print(CASH_ACCOUNT)
     print(CASH_BALANCE)
@@ -163,9 +87,10 @@ def bot():
         print('NEW COST BASIS: ', ((cost_basis*BTC_BALANCE)+(curr_bid*BTC_BALANCE*FEE_PERCENT))/BTC_BALANCE)
 
         if long_flag == False and dataframe['MACD'].iloc[-1] > dataframe['Signal'].iloc[-1]:
-            buy(dataframe)
+            trade.buy(api_url,auth,dataframe,long_flag,cost_basis,FEE_PERCENT,CASH_BALANCE)
+            print(long_flag)
         elif long_flag == True and dataframe['MACD'].iloc[-1] < dataframe['Signal'].iloc[-1] and curr_bid > new_cost_basis:
-            sell(dataframe)
+            trade.sell(api_url,auth,dataframe,long_flag,cost_basis,BTC_BALANCE,FEE_PERCENT)
 
         CASH_BALANCE, BTC_BALANCE = account.updateAccountBalances(api_url,auth)
 

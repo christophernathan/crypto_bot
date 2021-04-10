@@ -33,6 +33,7 @@ def buy(api_url, auth, dataframe, long_flag, cost_basis, FEE_PERCENT, CASH_BALAN
         text = json.dumps(order.json(), sort_keys=True, indent=4)
         print (text)
         long_flag = True
+        print(long_flag)
         executed_value = float(order.json()['executed_value'])
         fill_size = float(order.json()['size'])
         fill_price = executed_value/fill_size
