@@ -8,7 +8,7 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 
-from utils import auth, write_files, account, market, formatting, trade
+from utils import authentication, write_files, account, market, formatting, trade
 
 load_dotenv()
 
@@ -17,31 +17,8 @@ API_KEY = os.environ.get('API_KEY')
 API_PASS = os.environ.get('API_PASS')
 api_url = 'https://api-public.sandbox.pro.coinbase.com/'
 
-auth = auth.CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
-
-order_details = {
-    'type': 'limit',
-    'side': 'buy',
-    'product_id': 'BTC-USD',
-    'price': 55000,
-    'size': .00100000001
-}
-
-order = requests.post(api_url + 'orders', json=order_details, auth=auth)
-order_id = order.json().get('id')
-##order = requests.get(api_url + 'products', json=order_details, auth=auth)
-text = json.dumps(order.json(), sort_keys=True, indent=4)
-print(order_id)
-
-#r = requests.post(api_url + 'orders', json=order_details, auth=auth)
-#text = json.dumps(r.json(), sort_keys=True, indent=4)
-#print (text)
-#
-#r = requests.get(api_url + 'orders', json=order_details, auth=auth)
-#text = json.dumps(r.json(), sort_keys=True, indent=4)
-#print (text)
-
 def bot():
+    auth = authentication.CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
 
     BTC_data = deque(maxlen=200)
 
