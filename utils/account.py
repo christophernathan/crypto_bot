@@ -11,21 +11,21 @@ def initializeCostBasis(csv_path):
 def initializeAccountInfo(api_url, auth):
     accounts = requests.get(api_url + 'accounts', auth=auth)
     for account in accounts.json():
-        if account['currency'] == 'USD':
-            CASH_ACCOUNT = account['id']
-            CASH_BALANCE = float(account['available'])
-        elif account['currency'] == 'BTC':
-            BTC_ACCOUNT = account['id']
-            BTC_BALANCE = float(account['available'])
+        if account.get('currency') == 'USD':
+            CASH_ACCOUNT = account.get('id')
+            CASH_BALANCE = float(account.get('available'))
+        elif account.get('currency') == 'BTC':
+            BTC_ACCOUNT = account.get('id')
+            BTC_BALANCE = float(account.get('available'))
     return CASH_ACCOUNT, CASH_BALANCE, BTC_ACCOUNT, BTC_BALANCE
 
 def updateAccountBalances(api_url, auth):
     accounts = requests.get(api_url + 'accounts', auth=auth)
     for account in accounts.json():
-        if account['currency'] == 'USD':
-            CASH_BALANCE = float(account['available'])
-        elif account['currency'] == 'BTC':
-            BTC_BALANCE = float(account['available'])
+        if account.get('currency') == 'USD':
+            CASH_BALANCE = float(account.get('available'))
+        elif account.get('currency') == 'BTC':
+            BTC_BALANCE = float(account.get('available'))
     return CASH_BALANCE, BTC_BALANCE
 
 def updateFeePercent(csv_path): # assuming Taker fee classification to be safe. Percents current as of 4/3/21

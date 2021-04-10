@@ -17,18 +17,21 @@ API_KEY = os.environ.get('API_KEY')
 API_PASS = os.environ.get('API_PASS')
 api_url = 'https://api-public.sandbox.pro.coinbase.com/'
 
-#order_details = {
-#    'type': 'limit',
-#    'side': 'buy',
-#    'product_id': 'BTC-USD',
-#    'price': 55000,
-#    'size': .00100001
-#}
-#
-#order = requests.post(api_url + 'orders', json=order_details, auth=auth)
+auth = auth.CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
+
+order_details = {
+    'type': 'limit',
+    'side': 'buy',
+    'product_id': 'BTC-USD',
+    'price': 55000,
+    'size': .00100000001
+}
+
+order = requests.post(api_url + 'orders', json=order_details, auth=auth)
+order_id = order.json().get('id')
 ##order = requests.get(api_url + 'products', json=order_details, auth=auth)
-#text = json.dumps(order.json(), sort_keys=True, indent=4)
-#print(text)
+text = json.dumps(order.json(), sort_keys=True, indent=4)
+print(order_id)
 
 #r = requests.post(api_url + 'orders', json=order_details, auth=auth)
 #text = json.dumps(r.json(), sort_keys=True, indent=4)
@@ -38,10 +41,7 @@ api_url = 'https://api-public.sandbox.pro.coinbase.com/'
 #text = json.dumps(r.json(), sort_keys=True, indent=4)
 #print (text)
 
-
-auth = auth.CoinbaseAuth(API_KEY, API_SECRET, API_PASS)
-
-def bot(auth):
+def bot():
 
     BTC_data = deque(maxlen=200)
 
@@ -58,7 +58,7 @@ def bot(auth):
     print(BTC_BALANCE)
 
     curr_data = requests.get(api_url + 'products/BTC-USD/book', auth=auth).json()
-    curr_bid = float(curr_data['bids'][0][0])
+    curr_bid = float(curr_data.get('bids')[0][0])
     text = json.dumps(curr_data, sort_keys=True, indent=4)
     print(text)
 
@@ -79,10 +79,10 @@ def bot(auth):
         print('NEW COST BASIS: ', ((cost_basis*BTC_BALANCE)+(curr_bid*BTC_BALANCE*FEE_PERCENT))/BTC_BALANCE)
 
         if long_flag == False and dataframe['MACD'].iloc[-1] > dataframe['Signal'].iloc[-1]:
-            long_flag, cost_basis, FEE_PERCENT = trade.buy(api_url,auth,dataframe,long_flag,cost_basis,FEE_PERCENT,CASH_BALANCE)
+            long_flag, cost_basis, FEE_PERCENT = trade.buy(api_url,auth,dataframe,FEE_PERCENT,CASH_BALANCE)
             print(long_flag)
         elif long_flag == True and dataframe['MACD'].iloc[-1] < dataframe['Signal'].iloc[-1] and curr_bid > new_cost_basis:
-            long_flag, cost_basis, FEE_PERCENT = trade.sell(api_url,auth,dataframe,long_flag,cost_basis,BTC_BALANCE,FEE_PERCENT)
+            long_flag, cost_basis, FEE_PERCENT = trade.sell(api_url,auth,dataframe,cost_basis,BTC_BALANCE,FEE_PERCENT)
             print(long_flag)
 
         CASH_BALANCE, BTC_BALANCE = account.updateAccountBalances(api_url,auth)
