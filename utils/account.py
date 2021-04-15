@@ -10,6 +10,8 @@ def initializeCostBasis(csv_path):
 
 def initializeAccountInfo(api_url, auth):
     accounts = requests.get(api_url + 'accounts', auth=auth)
+    if accounts.status_code!=200:
+        return '',0,'',0
     for account in accounts.json():
         if account.get('currency') == 'USD':
             CASH_ACCOUNT = account.get('id')
@@ -21,6 +23,8 @@ def initializeAccountInfo(api_url, auth):
 
 def updateAccountBalances(api_url, auth):
     accounts = requests.get(api_url + 'accounts', auth=auth)
+    if accounts.status_code!=200:
+        return 0,0
     for account in accounts.json():
         if account.get('currency') == 'USD':
             CASH_BALANCE = float(account.get('available'))
