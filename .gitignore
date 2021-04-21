@@ -4,3 +4,15 @@ trade_activity.csv
 trade_errors.csv
 cache.sqlite
 .env
+
+# testing files
+api.py
+api2.py
+artists.csv
+data.csv
+data2.csv
+gemini_BTCUSD_2020_1min_(1)
+gemini_BTCUSD_2020_1min
+plan.txt
+test.py
+test2.py
