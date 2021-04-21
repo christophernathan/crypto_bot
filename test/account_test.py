@@ -1,5 +1,7 @@
 from utils import account
 from bot import api_url
+import sys
+sys.path.append('../utils')
 
 def test_initializeCostBasis1():
     assert account.initializeCostBasis('./utils/mocks/trade_activity_mock1.csv') == 0

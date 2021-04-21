@@ -1,4 +1,6 @@
 from utils import formatting
+import sys
+sys.path.append('../utils')
 
 def test_truncate1():
     assert formatting.truncate(1.001,2) == 1.00

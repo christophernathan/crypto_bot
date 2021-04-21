@@ -3,6 +3,8 @@ from bot import api_url
 import pandas as pd
 import numpy as np
 from pandas._testing import assert_frame_equal
+import sys
+sys.path.append('../utils')
 
 def test_getMarketData1(requests_mock):
     requests_mock.get(api_url+'products/BTC-USD/book',json={"bids":[["63150.71","3008.75745769",1]],"asks":[["63150.73","3009.48614189",1]],"sequence":310102899}, status_code=200)
