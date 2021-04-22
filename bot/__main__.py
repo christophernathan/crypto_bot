@@ -65,3 +65,6 @@ def bot():
         print(BTC_data)
         print(dataframe)
         print(dataframe['MACD'].iloc[-1])
+
+if __name__ == "__main__":
+    bot()
