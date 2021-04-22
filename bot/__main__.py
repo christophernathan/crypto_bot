@@ -1,14 +1,11 @@
-import requests, json, hmac, hashlib, time, base64, codecs
+import requests, json, hmac, hashlib, time, base64, codecs, math, csv, os, sys
 from requests.auth import AuthBase
 import pandas as pd
 from collections import deque
-import math
-import csv
 from datetime import datetime
-import os
 from dotenv import load_dotenv
 
-from utils import authentication, write_files, account, market, formatting, trade
+from bot.utils import authentication, write_files, account, market, formatting, trade
 
 load_dotenv()
 
