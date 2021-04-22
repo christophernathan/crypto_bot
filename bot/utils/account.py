@@ -60,3 +60,9 @@ def updateFeePercent(csv_path): # assuming Taker fee classification to be safe. 
         if total < key:
             return fee_table[key]
     return fee_table[list(fee_table)[-1]]
+
+def printUpdatedInfo(api_url,auth, FEE_PERCENT):
+    CASH_BALANCE, BTC_BALANCE = updateAccountBalances(api_url,auth)
+    print("Current USD Balance: ", CASH_BALANCE)
+    print("Current BTC Balance: ", BTC_BALANCE)
+    print("Current Fee Percent: ", FEE_PERCENT, "\n")
