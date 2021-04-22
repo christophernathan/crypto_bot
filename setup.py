@@ -1,12 +1,13 @@
 from setuptools import setup, find_packages
-from bot.__main__ import bot
 
 setup(
     name="crypto_bot",
+    version="1.0",
+    description="Simple crypto bot",
     author="Christopher Nathan",
     author_email="christophernathan1217@gmail.com",
-    version="1.0",
-    packages=find_packages('bot', exclude=['mocks','test','utils']),
+    url="https://github.com/christophernathan/crypto_bot",
+    packages=find_packages(include=['bot','bot.*']),
     entry_points={
         "console_scripts": [
             "bot = bot.__main__:bot"

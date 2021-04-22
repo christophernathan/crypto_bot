@@ -4,3 +4,4 @@ trade_activity.csv
 trade_errors.csv
 cache.sqlite
 .env
+crypto_bot.egg-info
