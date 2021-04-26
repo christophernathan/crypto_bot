@@ -51,4 +51,3 @@ def bot():
         time.sleep(1) # TODO: change to 60 seconds when actually using bot for minute quotes
         print(BTC_data)
         print(dataframe)
-        print(dataframe['MACD'].iloc[-1])
