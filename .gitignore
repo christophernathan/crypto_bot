@@ -5,3 +5,4 @@ trade_errors.csv
 cache.sqlite
 .env
 crypto_bot.egg-info
+crypto-bot-venv

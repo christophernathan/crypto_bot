@@ -8,6 +8,9 @@ setup(
     author_email="christophernathan1217@gmail.com",
     url="https://github.com/christophernathan/crypto_bot",
     packages=find_packages(include=['bot','bot.*']),
+    install_requires=[
+        'requests', 'requests-mock', 'python-dotenv', 'pandas', 'pytest'
+    ],
     entry_points={
         "console_scripts": [
             "bot = bot.__main__:bot"
