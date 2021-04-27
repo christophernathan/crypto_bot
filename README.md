@@ -1,6 +1,7 @@
 # Crypto Bot
 
-Simple bot to automate crypto trades. Has full account integration via the Coinbase Pro API, with Strategy revolves around the MACD indicator. When the MACS crosses above the signal line, the bot will attempt to open a long position in BTC. When the MACD crosses below the signal and BTC is currently held, the bot will attempt to sell all held BTC as long as the current bid price is above the cost basis + fees. Written in python with pandas and numpy libraries for data manipulation. Backtesting for BTCUSD on 1 minute time period over the last year shows an annualized return of about 444%. Account integration via coinbase pro API. Ability to track account balances and place orders via Coinbase pro API key. Uses python requests for rest API requests and responses.
+Simple bot to automate crypto trades. Has full account integration via the Coinbase Pro API, with the ability to track account balances and place trades via a Coinbase Pro API key. Market data is managed with `numpy` and `pandas`, and `requests` is used to send HTTP requests to the API. Unit tests implemented using `pytest` and `requests-mock`. API keys managed using `dotenv`.
+
 ## Disclaimer
 
 This project is for educational purposes, and I am not responsible for any financial losses incurred during use of this bot.
@@ -11,11 +12,13 @@ This project uses `pip` and `setuptools` for package management. To install, fir
 
 ## Usage
 
-After installing the `crypto-bot` package, the `bot` script command will start running the trading bot. The bot will continue indefinitely until manually stopped. There is limited UI feedback provided via terminal to track the bot's activity.
+After installing the `crypto-bot` package, you must create an account and API key via the [Coinbase Pro UI](https://pro.coinbase.com/profile/api). I would recommend creating a [sandbox API key](https://public.sandbox.pro.coinbase.com/profile/api) first, for testing purposes. Next, create a `.env` file with 3 line-separated environment variables (API_SECRET, API_KEY, API_PASS) declared as follows: API_SECRET=XXX. The `bot` script command will start running the trading bot. The bot will continue indefinitely until manually stopped. There is limited UI feedback provided via terminal to track the bot's activity.
 
 ## Analysis
 
-The bot's trading strategy revolves around the MACD indicator, which consists of the MACD line (difference between the 12 and 26 day price EMA) and a signal line (9 day EMA of the MACD line). When the MACD crosses above the signal line, the bot will attempt to open a long position in BTC. When the MACD crosses below the signal and BTC is currently held, the bot will attempt to sell all held BTC as long as the current bid price is above the cost basis + fees. By doing this, the bot should theoretically never sell at a loss. In order to test this strategy, I created a simplified implementation that manipulated BTCUSD 1 minute data from Feb 2020 to Feb 2021. Backtesting revealed an annualized return of about 444% for this time frame, but it should be noted that 2020 was certainly a bull market for crypto. ![Backtesting](backtesting.png)
+The bot's trading strategy revolves around the MACD indicator, which consists of the MACD line (difference between the 12 and 26 day price EMA) and a signal line (9 day EMA of the MACD line). When the MACD crosses above the signal line, the bot will attempt to open a long position in BTC. When the MACD crosses below the signal and BTC is currently held, the bot will attempt to sell all held BTC as long as the current bid price is above the cost basis + fees. By doing this, the bot should theoretically never sell at a loss. In order to test this strategy, I created a simplified implementation that manipulated BTCUSD 1 minute data from Feb 2020 to Feb 2021. Backtesting revealed an annualized return of about 444% for this time frame, but it should be noted that 2020 was certainly a bull market for crypto. Below is a visualization of this backtesting process created using `matplotlib`.
+
+![Backtesting](backtesting.png)
 
 ## Testing
 
