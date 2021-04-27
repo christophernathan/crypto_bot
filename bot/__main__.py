@@ -48,6 +48,6 @@ def bot():
             account.printUpdatedInfo(api_url,auth,FEE_PERCENT)
 
 
-        time.sleep(1) # TODO: change to 60 seconds when actually using bot for minute quotes
+        time.sleep(1)
         print(BTC_data)
         print(dataframe)
