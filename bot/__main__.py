@@ -1,11 +1,10 @@
-import requests, json, hmac, hashlib, time, base64, codecs, math, csv, os, sys
-from requests.auth import AuthBase
-import pandas as pd
+import requests, time, os, sys
 from collections import deque
-from datetime import datetime
 from dotenv import load_dotenv
 
-from bot.utils import authentication, write_files, account, market, formatting, trade
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from bot.utils import authentication, account, market, trade
 
 load_dotenv()
 
